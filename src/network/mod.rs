@@ -1,18 +1,21 @@
 mod create_network_handler;
+mod inspect_network_handler;
 
 use crate::error::DockerError::{
     DockerAttachContainerToNetworkError, DockerNetworkAlreadyExistsCreateError,
     DockerNetworkCreateError, DockerNetworkDeleteError,
     FailedToAttachDockerContainerToNetworkError, FailedToCreateDockerNetworkError,
-    FailedToDeleteNetworkError,
+    FailedToDeleteNetworkError, InspectNetworkError, NetworkNotFoundError,
 };
 use crate::error::DockerResult;
 use crate::network::create_network_handler::CreateNetworkHandler;
+use crate::network::inspect_network_handler::InspectNetworkHandler;
 use curl::easy::{Easy2, Handler, List};
 use serde::{Deserialize, Serialize};
-use strum_macros::EnumString;
+use std::string::ToString;
+use strum_macros::Display;
 
-#[derive(EnumString, Serialize, Deserialize, Debug, Clone)]
+#[derive(Display, Serialize, Deserialize, Debug, Clone)]
 #[strum(serialize_all = "lowercase")]
 pub enum NetworkMode {
     Bridge,
@@ -171,4 +174,40 @@ pub fn delete_network<H: Handler>(
         Ok(_) => Err(DockerNetworkDeleteError),
         Err(e) => Err(FailedToDeleteNetworkError(e.to_string())),
     }
+}
+
+///
+/// [Reference](https://docs.docker.com/engine/api/v1.40/#operation/NetworkInspect)
+pub fn inspect_network<H: Handler>(
+    network_id_or_name: &str,
+    docker_host: &str,
+    use_unix_socket: bool,
+    log_handler: H,
+) -> DockerResult<Network> {
+    let mut easy = Easy2::new(InspectNetworkHandler::new(log_handler));
+    if use_unix_socket {
+        easy.unix_socket("/var/run/docker.sock")?;
+    }
+
+    easy.url(&format!(
+        "http://{}/networks/{}",
+        docker_host, network_id_or_name
+    ))?;
+    easy.perform()?;
+
+    let network: Network = serde_json::from_str(&easy.get_ref().body()).unwrap();
+
+    match easy.response_code() {
+        Ok(200) => Ok(network),
+        Ok(404) => Err(NetworkNotFoundError(network_id_or_name.to_string())),
+        _ => Err(InspectNetworkError),
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "PascalCase")]
+pub struct Network {
+    pub name: String,
+    pub id: String,
+    // todo
 }

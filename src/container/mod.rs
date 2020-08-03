@@ -1,4 +1,4 @@
-mod create;
+pub mod create;
 mod log_handlers;
 
 use crate::container::create::options::Options;
@@ -19,7 +19,7 @@ pub fn attach_to_container<H: Handler>(
     docker_host: &str,
     use_unix_socket: bool,
     log_handler: H,
-) -> DockerResult<()> {
+) -> DockerResult<Easy2<H>> {
     let mut easy = Easy2::new(log_handler);
     if use_unix_socket {
         easy.unix_socket("/var/run/docker.sock")?;
@@ -31,8 +31,9 @@ pub fn attach_to_container<H: Handler>(
         "http://{}/containers/{}/attach{}",
         docker_host, container_id, query_string
     ))?;
+    easy.perform()?;
 
-    Ok(())
+    Ok(easy)
 }
 
 ///

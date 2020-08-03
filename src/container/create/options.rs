@@ -1,13 +1,14 @@
 use crate::container::create::host_config::HostConfig;
-use crate::container::create::network_config::NetworkConfig;
+use crate::container::create::networking_config::NetworkingConfig;
 use serde_json::json;
 use serde_json::Map;
 use serde_json::Value;
 use std::collections::HashMap;
 use strum_macros::EnumString;
 
+#[derive(Debug)]
 pub struct Options {
-    fields: HashMap<String, Value>,
+    fields: HashMap<&'static str, Value>,
 }
 impl Options {
     pub fn to_json(&self) -> String {
@@ -21,25 +22,23 @@ impl Options {
     }
 
     pub fn hostname(&mut self, hostname: &str) {
-        self.fields.insert("Hostname".to_string(), json!(hostname));
+        self.fields.insert("Hostname", json!(hostname));
     }
 
     pub fn domain_name(&mut self, domain_name: &str) {
-        self.fields
-            .insert("Domainname".to_string(), json!(domain_name));
+        self.fields.insert("Domainname", json!(domain_name));
     }
 
     pub fn user(&mut self, user: &str) {
-        self.fields.insert("User".to_string(), json!(user));
+        self.fields.insert("User", json!(user));
     }
 
     pub fn attach_stdin(&mut self, attach: bool) {
-        self.fields.insert("AttachStdin".to_string(), json!(attach));
+        self.fields.insert("AttachStdin", json!(attach));
     }
 
     pub fn attach_stderr(&mut self, attach: bool) {
-        self.fields
-            .insert("AttachStderr".to_string(), json!(attach));
+        self.fields.insert("AttachStderr", json!(attach));
     }
 
     pub fn expose_port(&mut self, port: u16, protocol: Protocol) {
@@ -52,22 +51,20 @@ impl Options {
         } else {
             let mut map = Map::new();
             map.insert(formatted, json!({}));
-            self.fields.insert("ExposedPorts".to_string(), json!(map));
+            self.fields.insert("ExposedPorts", json!(map));
         }
     }
 
     pub fn tty(&mut self, tty: bool) {
-        self.fields.insert("Tty".to_string(), json!(tty));
+        self.fields.insert("Tty", json!(tty));
     }
 
     pub fn open_stdin(&mut self, open_stdin: bool) {
-        self.fields
-            .insert("OpenStdin".to_string(), json!(open_stdin));
+        self.fields.insert("OpenStdin", json!(open_stdin));
     }
 
     pub fn stdin_once(&mut self, stdin_once: bool) {
-        self.fields
-            .insert("StdinOnce".to_string(), json!(stdin_once));
+        self.fields.insert("StdinOnce", json!(stdin_once));
     }
 
     pub fn add_env(&mut self, key: &str, value: &str) {
@@ -78,13 +75,12 @@ impl Options {
                 env.push(json!(formatted));
             }
         } else {
-            self.fields
-                .insert("Env".to_string(), json!(vec![formatted]));
+            self.fields.insert("Env", json!(vec![formatted]));
         }
     }
 
     pub fn cmd(&mut self, cmd: &str) {
-        self.fields.insert("Cmd".to_string(), json!(cmd));
+        self.fields.insert("Cmd", json!(cmd));
     }
 
     pub fn health_check(&mut self) {
@@ -96,7 +92,7 @@ impl Options {
     }
 
     pub fn image(&mut self, image: &str) {
-        self.fields.insert("Image".to_string(), json!(image));
+        self.fields.insert("Image", json!(image));
     }
 
     pub fn volumes(&mut self) {
@@ -104,10 +100,8 @@ impl Options {
     }
 
     pub fn working_dir(&mut self, working_dir: &str) {
-        self.fields.insert(
-            "WorkingDir".to_string(),
-            Value::String(working_dir.to_string()),
-        );
+        self.fields
+            .insert("WorkingDir", Value::String(working_dir.to_string()));
     }
 
     pub fn entry_point(&mut self) {
@@ -116,12 +110,11 @@ impl Options {
 
     pub fn network_disabled(&mut self, network_disabled: bool) {
         self.fields
-            .insert("NetworkDisabled".to_string(), json!(network_disabled));
+            .insert("NetworkDisabled", json!(network_disabled));
     }
 
     pub fn mac_address(&mut self, mac_address: &str) {
-        self.fields
-            .insert("MacAddress".to_string(), json!(mac_address));
+        self.fields.insert("MacAddress", json!(mac_address));
     }
 
     pub fn on_build(&mut self) {
@@ -146,12 +139,12 @@ impl Options {
 
     pub fn host_config(&mut self, host_config: HostConfig) {
         self.fields
-            .insert("HostConfig".to_string(), json!(host_config.consume()));
+            .insert("HostConfig", json!(host_config.consume()));
     }
 
-    pub fn network_config(&mut self, network_config: NetworkConfig) {
+    pub fn networking_config(&mut self, networking_config: NetworkingConfig) {
         self.fields
-            .insert("NetworkConfig".to_string(), json!(network_config.consume()));
+            .insert("NetworkingConfig", json!(networking_config.consume()));
     }
 }
 
@@ -161,4 +154,40 @@ pub enum Protocol {
     Tcp,
     Udp,
     Sctp,
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::container::create::host_config::HostConfig;
+    use crate::container::create::networking_config::{
+        EndpointSettings, EndpointsConfig, NetworkingConfig,
+    };
+    use crate::container::create::options::Options;
+    use crate::network::NetworkMode;
+
+    #[test]
+    fn test() {
+        let mut options = Options::new();
+        options.image("9cdb6dec40d33ee2329ae6fc70158c9712cb8d66ebfe77da5a3069519850c17a");
+        options.hostname("tfb-server");
+        options.domain_name("tfb-server");
+
+        let mut host_config = HostConfig::new();
+        host_config.network_mode(NetworkMode::Bridge);
+        host_config.publish_all_ports(true);
+
+        options.host_config(host_config);
+
+        let mut endpoint_settings = EndpointSettings::new();
+        endpoint_settings.alias("tfb-server");
+        endpoint_settings.network_id("aa126a3a0c13");
+
+        options.networking_config(NetworkingConfig {
+            endpoints_config: EndpointsConfig { endpoint_settings },
+        });
+
+        options.tty(true);
+
+        eprintln!("{}", options.to_json());
+    }
 }

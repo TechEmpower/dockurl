@@ -1,3 +1,3 @@
 pub mod host_config;
-pub mod network_config;
+pub mod networking_config;
 pub mod options;

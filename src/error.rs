@@ -42,6 +42,12 @@ pub enum DockerError {
     #[error("Error deleting Docker Network")]
     DockerNetworkDeleteError,
 
+    #[error("Network not found error: {0}")]
+    NetworkNotFoundError(String),
+
+    #[error("Error inspecting network")]
+    InspectNetworkError,
+
     #[error("Error attaching Docker Container to Network: {0}")]
     FailedToAttachDockerContainerToNetworkError(String),
 

@@ -4,7 +4,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 
 pub struct HostConfig {
-    fields: HashMap<String, Value>,
+    fields: HashMap<&'static str, Value>,
 }
 impl HostConfig {
     pub fn new() -> Self {
@@ -13,16 +13,16 @@ impl HostConfig {
         }
     }
 
-    pub fn consume(self) -> HashMap<String, Value> {
+    pub fn consume(self) -> HashMap<&'static str, Value> {
         self.fields
     }
 
     pub fn cpu_shares(&mut self, weight: u32) {
-        self.fields.insert("CpuShares".to_string(), json!(weight));
+        self.fields.insert("CpuShares", json!(weight));
     }
 
     pub fn memory(&mut self, memory: u64) {
-        self.fields.insert("Memory".to_string(), json!(memory));
+        self.fields.insert("Memory", json!(memory));
     }
 
     pub fn cgroup_parent(&mut self) {
@@ -158,10 +158,8 @@ impl HostConfig {
     }
 
     pub fn network_mode(&mut self, network_mode: NetworkMode) {
-        let formatted = format!("{:?}", network_mode);
-
         self.fields
-            .insert("NetworkMode".to_string(), json!(formatted));
+            .insert("NetworkMode", json!(network_mode.to_string()));
     }
 
     pub fn port_binding(&mut self, host_ip: &str, host_port: &str) {
@@ -174,7 +172,7 @@ impl HostConfig {
             }
         } else {
             self.fields
-                .insert("PortBindings".to_string(), json!(vec![port_binding]));
+                .insert("PortBindings", json!(vec![port_binding]));
         }
     }
 
@@ -183,8 +181,7 @@ impl HostConfig {
     }
 
     pub fn auto_remove(&mut self, auto_remove: bool) {
-        self.fields
-            .insert("AutoRemove".to_string(), json!(auto_remove));
+        self.fields.insert("AutoRemove", json!(auto_remove));
     }
 
     pub fn volume_driver(&mut self) {
@@ -231,8 +228,7 @@ impl HostConfig {
                 extra_hosts.push(json!(extra_host));
             }
         } else {
-            self.fields
-                .insert("ExtraHosts".to_string(), json!(vec![extra_host]));
+            self.fields.insert("ExtraHosts", json!(vec![extra_host]));
         }
     }
 
@@ -266,7 +262,7 @@ impl HostConfig {
 
     pub fn publish_all_ports(&mut self, publish_all_ports: bool) {
         self.fields
-            .insert("PublishAllPorts".to_string(), json!(publish_all_ports));
+            .insert("PublishAllPorts", json!(publish_all_ports));
     }
 
     pub fn readonly_root_fs(&mut self) {

@@ -2,16 +2,13 @@ use serde_json::json;
 use serde_json::Value;
 use std::collections::HashMap;
 
-pub struct NetworkConfig {
+pub struct NetworkingConfig {
     pub endpoints_config: EndpointsConfig,
 }
-impl NetworkConfig {
-    pub fn consume(self) -> HashMap<String, Value> {
+impl NetworkingConfig {
+    pub fn consume(self) -> HashMap<&'static str, Value> {
         let mut map = HashMap::new();
-        map.insert(
-            "EndpointsConfig".to_string(),
-            json!(self.endpoints_config.consume()),
-        );
+        map.insert("EndpointsConfig", json!(self.endpoints_config.consume()));
         map
     }
 }
@@ -20,18 +17,15 @@ pub struct EndpointsConfig {
     pub endpoint_settings: EndpointSettings,
 }
 impl EndpointsConfig {
-    pub fn consume(self) -> HashMap<String, Value> {
+    pub fn consume(self) -> HashMap<&'static str, Value> {
         let mut map = HashMap::new();
-        map.insert(
-            "EndpointSettings".to_string(),
-            json!(self.endpoint_settings.consume()),
-        );
+        map.insert("EndpointSettings", json!(self.endpoint_settings.consume()));
         map
     }
 }
 
 pub struct EndpointSettings {
-    fields: HashMap<String, Value>,
+    fields: HashMap<&'static str, Value>,
 }
 impl EndpointSettings {
     pub fn new() -> Self {
@@ -40,7 +34,7 @@ impl EndpointSettings {
         }
     }
 
-    pub fn consume(self) -> HashMap<String, Value> {
+    pub fn consume(self) -> HashMap<&'static str, Value> {
         self.fields
     }
 
@@ -58,14 +52,12 @@ impl EndpointSettings {
                 aliases.push(json!(alias));
             }
         } else {
-            self.fields
-                .insert("Aliases".to_string(), json!(vec![alias]));
+            self.fields.insert("Aliases", json!(vec![alias]));
         }
     }
 
     pub fn network_id(&mut self, network_id: &str) {
-        self.fields
-            .insert("NetworkID".to_string(), json!(network_id));
+        self.fields.insert("NetworkID", json!(network_id));
     }
 
     pub fn endpoint_id(&mut self) {
