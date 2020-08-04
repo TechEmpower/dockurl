@@ -74,4 +74,10 @@ pub enum DockerError {
 
     #[error("Error creating Docker Container")]
     DockerContainerCreateError,
+
+    #[error("Error inspecting Docker Container")]
+    ContainerInspectionError,
+
+    #[error("Error inspecting Docker Container")]
+    ContainerInspectionRequestError(String, u32),
 }

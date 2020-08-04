@@ -1,11 +1,15 @@
 pub mod create;
+pub mod inspect;
 mod log_handlers;
 
 use crate::container::create::options::Options;
+use crate::container::inspect::ContainerInspection;
 use crate::container::log_handlers::create_container_handler::CreateContainerHandler;
+use crate::container::log_handlers::inspect_container_handler::InspectContainerHandler;
 use crate::container::log_handlers::start_container_handler::StartContainerHandler;
 use crate::error::DockerError::{
-    DockerContainerCreateError, DockerContainerStartError, FailedToCreateDockerContainerError,
+    ContainerInspectionError, ContainerInspectionRequestError, DockerContainerCreateError,
+    DockerContainerStartError, FailedToCreateDockerContainerError,
     FailedToStartDockerContainerError, KillContainerError, NoSuchContainerToStopError,
     StopContainerError,
 };
@@ -14,12 +18,12 @@ use curl::easy::{Easy2, Handler, List};
 
 ///
 /// [Reference](https://docs.docker.com/engine/api/v1.40/#operation/ContainerAttach)
-pub fn attach_to_container<H: Handler>(
+pub fn attach_to_container<H: Handler + Clone>(
     container_id: &str,
     docker_host: &str,
     use_unix_socket: bool,
     log_handler: H,
-) -> DockerResult<Easy2<H>> {
+) -> DockerResult<H> {
     let mut easy = Easy2::new(log_handler);
     if use_unix_socket {
         easy.unix_socket("/var/run/docker.sock")?;
@@ -33,7 +37,7 @@ pub fn attach_to_container<H: Handler>(
     ))?;
     easy.perform()?;
 
-    Ok(easy)
+    Ok(easy.get_ref().clone())
 }
 
 ///
@@ -81,6 +85,47 @@ pub fn create_container<H: Handler>(
             }
         },
         Err(e) => Err(FailedToCreateDockerContainerError(e.to_string())),
+    }
+}
+
+///
+/// [Reference](https://docs.docker.com/engine/api/v1.40/#operation/ContainerInspect)
+pub fn inspect_container<H: Handler>(
+    container_id: &str,
+    docker_host: &str,
+    use_unix_socket: bool,
+    log_handler: H,
+) -> DockerResult<ContainerInspection> {
+    let mut easy = Easy2::new(InspectContainerHandler::new(log_handler));
+    if use_unix_socket {
+        easy.unix_socket("/var/run/docker.sock")?;
+    }
+
+    easy.url(&format!(
+        "http://{}/containers/{}/json",
+        docker_host, container_id
+    ))?;
+    easy.perform()?;
+
+    match easy.response_code() {
+        Ok(200) => {
+            if let Ok(json_str) = std::str::from_utf8(&easy.get_ref().accumulator) {
+                match serde_json::from_str(json_str) {
+                    Ok(json) => Ok(json),
+                    Err(e) => Err(DockerError::SerdeJsonError(e)),
+                }
+            } else {
+                Err(ContainerInspectionError)
+            }
+        }
+        Ok(404) => Err(ContainerInspectionError),
+        Ok(code) => {
+            if let Some(error) = &easy.get_ref().error_message {
+                return Err(ContainerInspectionRequestError(error.clone(), code));
+            }
+            Err(DockerContainerStartError(code))
+        }
+        Err(e) => Err(DockerError::CurlError(e)),
     }
 }
 
