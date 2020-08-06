@@ -54,8 +54,8 @@ pub enum DockerError {
     #[error("Error attaching Docker Container to Network")]
     DockerAttachContainerToNetworkError,
 
-    #[error("No such container to stop: {0}")]
-    NoSuchContainerToStopError(String),
+    #[error("No such container: {0}")]
+    NoSuchContainerError(String),
 
     #[error("Error stopping Docker Container: {0}")]
     StopContainerError(String),
@@ -80,4 +80,7 @@ pub enum DockerError {
 
     #[error("Error inspecting Docker Container")]
     ContainerInspectionRequestError(String, u32),
+
+    #[error("Docker Daemon Error")]
+    DockerDaemonError,
 }

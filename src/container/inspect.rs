@@ -21,7 +21,7 @@ pub struct ContainerConfig {
     pub cmd: Vec<String>,
     pub domainname: String,
     pub env: Vec<String>,
-    pub exposed_ports: HashMap<String, ExposedPort>,
+    pub exposed_ports: Option<HashMap<String, ExposedPort>>,
     pub healthcheck: Option<Healthcheck>,
     pub hostname: String,
     pub image: String,

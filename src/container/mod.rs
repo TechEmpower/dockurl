@@ -8,10 +8,10 @@ use crate::container::log_handlers::create_container_handler::CreateContainerHan
 use crate::container::log_handlers::inspect_container_handler::InspectContainerHandler;
 use crate::container::log_handlers::start_container_handler::StartContainerHandler;
 use crate::error::DockerError::{
-    ContainerInspectionError, ContainerInspectionRequestError, DockerContainerCreateError,
-    DockerContainerStartError, FailedToCreateDockerContainerError,
-    FailedToStartDockerContainerError, KillContainerError, NoSuchContainerToStopError,
-    StopContainerError,
+    ContainerInspectionError, ContainerInspectionRequestError, CurlError,
+    DockerContainerCreateError, DockerContainerStartError, DockerDaemonError,
+    FailedToCreateDockerContainerError, FailedToStartDockerContainerError, KillContainerError,
+    NoSuchContainerError, StopContainerError,
 };
 use crate::error::{DockerError, DockerResult};
 use curl::easy::{Easy2, Handler, List};
@@ -38,6 +38,37 @@ pub fn attach_to_container<H: Handler + Clone>(
     easy.perform()?;
 
     Ok(easy.get_ref().clone())
+}
+
+///
+/// [Reference](https://docs.docker.com/engine/api/v1.40/#operation/ContainerLogs)
+pub fn get_container_logs<H: Handler + Clone>(
+    container_id: &str,
+    docker_host: &str,
+    use_unix_socket: bool,
+    log_handler: H,
+) -> DockerResult<H> {
+    let mut easy = Easy2::new(log_handler);
+    if use_unix_socket {
+        easy.unix_socket("/var/run/docker.sock")?;
+    }
+
+    let query_params = "?stdout=1&stderr=1";
+
+    easy.url(&format!(
+        "http://{}/containers/{}/logs{}",
+        docker_host, container_id, query_params,
+    ))?;
+    easy.perform()?;
+
+    match easy.response_code() {
+        Ok(code) => match code {
+            200 => Ok(easy.get_ref().clone()),
+            404 => Err(NoSuchContainerError(container_id.to_string())),
+            _ => Err(DockerDaemonError),
+        },
+        Err(e) => Err(CurlError(e)),
+    }
 }
 
 ///
@@ -154,11 +185,11 @@ pub fn start_container<H: Handler>(
         Ok(204) => Ok(()),
         Ok(code) => {
             if let Some(error) = &easy.get_ref().error_message {
-                return Err(FailedToStartDockerContainerError(error.clone(), code));
+                return Err(dbg!(FailedToStartDockerContainerError(error.clone(), code)));
             }
-            Err(DockerContainerStartError(code))
+            Err(dbg!(DockerContainerStartError(code)))
         }
-        Err(e) => Err(DockerError::CurlError(e)),
+        Err(e) => Err(dbg!(DockerError::CurlError(e))),
     }
 }
 
@@ -185,7 +216,7 @@ pub fn stop_container<H: Handler>(
     match easy.response_code()? {
         204 => Ok(()),
         304 => Ok(()), // container already stopped
-        404 => Err(NoSuchContainerToStopError(container_id.to_string())),
+        404 => Err(NoSuchContainerError(container_id.to_string())),
         _ => Err(StopContainerError(format!(
             "An error occurred while trying to stop container: {}",
             container_id
@@ -219,5 +250,35 @@ pub fn kill_container<H: Handler>(
             "An error occurred while trying to kill container: {}",
             container_id
         ))),
+    }
+}
+
+///
+/// [Reference](https://docs.docker.com/engine/api/v1.40/#operation/ContainerLogs)
+pub fn wait_for_container_to_exit<H: Handler>(
+    container_id: &str,
+    docker_host: &str,
+    use_unix_socket: bool,
+    log_handler: H,
+) -> DockerResult<()> {
+    let mut easy = Easy2::new(log_handler);
+    if use_unix_socket {
+        easy.unix_socket("/var/run/docker.sock")?;
+    }
+
+    easy.post(true)?;
+    easy.url(&format!(
+        "http://{}/containers/{}/wait",
+        docker_host, container_id,
+    ))?;
+    easy.perform()?;
+
+    match easy.response_code() {
+        Ok(code) => match code {
+            200 => Ok(()),
+            404 => Err(NoSuchContainerError(container_id.to_string())),
+            _ => Err(DockerDaemonError),
+        },
+        Err(e) => Err(CurlError(e)),
     }
 }

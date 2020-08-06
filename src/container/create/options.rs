@@ -10,6 +10,11 @@ use strum_macros::EnumString;
 pub struct Options {
     fields: HashMap<&'static str, Value>,
 }
+impl Default for Options {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 impl Options {
     pub fn to_json(&self) -> String {
         serde_json::to_string(&self.fields).unwrap()
@@ -80,6 +85,10 @@ impl Options {
     }
 
     pub fn cmd(&mut self, cmd: &str) {
+        self.fields.insert("Cmd", json!(cmd));
+    }
+
+    pub fn cmds(&mut self, cmd: &[String]) {
         self.fields.insert("Cmd", json!(cmd));
     }
 
