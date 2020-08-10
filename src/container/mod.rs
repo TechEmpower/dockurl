@@ -185,11 +185,11 @@ pub fn start_container<H: Handler>(
         Ok(204) => Ok(()),
         Ok(code) => {
             if let Some(error) = &easy.get_ref().error_message {
-                return Err(dbg!(FailedToStartDockerContainerError(error.clone(), code)));
+                return Err(FailedToStartDockerContainerError(error.clone(), code));
             }
-            Err(dbg!(DockerContainerStartError(code)))
+            Err(DockerContainerStartError(code))
         }
-        Err(e) => Err(dbg!(DockerError::CurlError(e))),
+        Err(e) => Err(DockerError::CurlError(e)),
     }
 }
 

@@ -50,7 +50,7 @@ pub fn create_network<H: Handler>(
 
     let options = NetworkCreationOptions {
         name: network_name.to_string(),
-        driver: format!("{:?}", network_mode),
+        driver: network_mode.to_string(),
         internal: false,
         check_duplicate: true,
     };
@@ -67,9 +67,8 @@ pub fn create_network<H: Handler>(
 
     match easy.response_code() {
         Ok(201) => {
-            let network_id = &easy.get_mut().network_id;
-            if network_id.is_some() {
-                return Ok(network_id.clone().unwrap());
+            if let Some(network_id) = &easy.get_ref().network_id {
+                return Ok(network_id.clone());
             } else {
                 let error_message = &easy.get_ref().error_message;
                 if error_message.is_some() {
@@ -83,7 +82,7 @@ pub fn create_network<H: Handler>(
         Ok(409) => Err(DockerNetworkAlreadyExistsCreateError(
             network_name.to_string(),
         )),
-        Ok(_) => Err(DockerNetworkCreateError),
+        Ok(_code) => Err(DockerNetworkCreateError),
         Err(e) => Err(FailedToCreateDockerNetworkError(e.to_string())),
     }
 }
@@ -195,10 +194,11 @@ pub fn inspect_network<H: Handler>(
     ))?;
     easy.perform()?;
 
-    let network: Network = serde_json::from_str(&easy.get_ref().body()).unwrap();
-
     match easy.response_code() {
-        Ok(200) => Ok(network),
+        Ok(200) => {
+            let network: Network = serde_json::from_str(&easy.get_ref().body()).unwrap();
+            Ok(network)
+        }
         Ok(404) => Err(NetworkNotFoundError(network_id_or_name.to_string())),
         _ => Err(InspectNetworkError),
     }
