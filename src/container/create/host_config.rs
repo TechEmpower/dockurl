@@ -225,7 +225,7 @@ impl HostConfig {
     }
 
     pub fn extra_host(&mut self, hostname: &str, ip: &str) {
-        let extra_host = format!("{}={}", hostname, ip);
+        let extra_host = format!("{}:{}", hostname, ip);
 
         if let Some(extra_hosts) = self.fields.get_mut("ExtraHosts") {
             if let Some(extra_hosts) = extra_hosts.as_array_mut() {
