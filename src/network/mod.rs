@@ -1,13 +1,16 @@
+mod connect_container_to_network_handler;
 mod create_network_handler;
 mod inspect_network_handler;
 
 use crate::error::DockerError::{
-    DockerAttachContainerToNetworkError, DockerNetworkAlreadyExistsCreateError,
-    DockerNetworkCreateError, DockerNetworkDeleteError,
-    FailedToAttachDockerContainerToNetworkError, FailedToCreateDockerNetworkError,
-    FailedToDeleteNetworkError, InspectNetworkError, NetworkNotFoundError,
+    DockerNetworkAlreadyExistsCreateError, DockerNetworkCreateError, DockerNetworkDeleteError,
+    DockerServerError, FailedToAttachDockerContainerToNetworkError,
+    FailedToCreateDockerNetworkError, FailedToDeleteNetworkError, InspectNetworkError,
+    NetworkNotFoundError, NetworkOrContainerNotFoundError, OperationNotSupportedError,
+    UnknownDockerError,
 };
 use crate::error::DockerResult;
+use crate::network::connect_container_to_network_handler::ConnectContainerToNetworkHandler;
 use crate::network::create_network_handler::CreateNetworkHandler;
 use crate::network::inspect_network_handler::InspectNetworkHandler;
 use curl::easy::{Easy2, Handler, List};
@@ -116,7 +119,7 @@ pub fn connect_container_to_network<H: Handler>(
     use_unix_socket: bool,
     log_handler: H,
 ) -> DockerResult<()> {
-    let mut easy = Easy2::new(log_handler);
+    let mut easy = Easy2::new(ConnectContainerToNetworkHandler::new(log_handler));
     if use_unix_socket {
         easy.unix_socket("/var/run/docker.sock")?;
     }
@@ -146,7 +149,17 @@ pub fn connect_container_to_network<H: Handler>(
 
     match easy.response_code() {
         Ok(200) => Ok(()),
-        Ok(_) => Err(DockerAttachContainerToNetworkError),
+        Ok(403) => Err(OperationNotSupportedError),
+        Ok(404) => Err(NetworkOrContainerNotFoundError(
+            network_id.to_string(),
+            container_id.to_string(),
+        )),
+        Ok(500) => Err(DockerServerError),
+        Ok(code) => Err(UnknownDockerError(format!(
+            "Response code: {}; Response: {}",
+            code,
+            easy.get_ref().body()
+        ))),
         Err(e) => Err(FailedToAttachDockerContainerToNetworkError(e.to_string())),
     }
 }

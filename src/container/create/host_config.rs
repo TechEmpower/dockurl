@@ -6,6 +6,14 @@ use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "PascalCase")]
+pub struct Ulimit<'a> {
+    pub name: &'a str,
+    pub soft: u32,
+    pub hard: u32,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "PascalCase")]
 pub struct HostConfig {
     fields: HashMap<String, Value>,
 }
@@ -128,8 +136,8 @@ impl HostConfig {
         // todo
     }
 
-    pub fn ulimits(&mut self) {
-        // todo
+    pub fn ulimits(&mut self, ulimits: Vec<Ulimit>) {
+        self.fields.insert("Ulimits".to_string(), json!(ulimits));
     }
 
     pub fn cpu_count(&mut self, _count: i64) {
@@ -298,8 +306,8 @@ impl HostConfig {
         // todo
     }
 
-    pub fn sysctls(&mut self) {
-        // todo
+    pub fn sysctls(&mut self, sysctls: HashMap<&str, &str>) {
+        self.fields.insert("Sysctls".to_string(), json!(sysctls));
     }
 
     pub fn runtime(&mut self) {

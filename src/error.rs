@@ -51,8 +51,17 @@ pub enum DockerError {
     #[error("Error attaching Docker Container to Network: {0}")]
     FailedToAttachDockerContainerToNetworkError(String),
 
-    #[error("Error attaching Docker Container to Network")]
-    DockerAttachContainerToNetworkError,
+    #[error("Operation not supported for swarm scoped networks")]
+    OperationNotSupportedError,
+
+    #[error("Network or container not found. Network: {0}; Container: {1}")]
+    NetworkOrContainerNotFoundError(String, String),
+
+    #[error("Docker server error")]
+    DockerServerError,
+
+    #[error("Unknown docker server error: {0}")]
+    UnknownDockerError(String),
 
     #[error("No such container: {0}")]
     NoSuchContainerError(String),
