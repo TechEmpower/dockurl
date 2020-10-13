@@ -269,8 +269,9 @@ impl HostConfig {
         // todo
     }
 
-    pub fn privileged(&mut self) {
-        // todo
+    pub fn privileged(&mut self, privileged: bool) {
+        self.fields
+            .insert("Privileged".to_string(), json!(privileged));
     }
 
     pub fn publish_all_ports(&mut self, publish_all_ports: bool) {
