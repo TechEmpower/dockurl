@@ -6,6 +6,8 @@ authors = ["Mike Smith <msmith@techempower.com>"]
 edition = "2018"
 license = "BSD-3-Clause"
 repository = "https://github.com/techempower/dockurl"
+keywords = ["docker", "curl"]
+categories = ["api-bindings"]
 
 [dependencies]
 curl = "0.4.33"
