@@ -18,7 +18,7 @@ pub struct ContainerConfig {
     pub attach_stderr: bool,
     pub attach_stdin: bool,
     pub attach_stdout: bool,
-    pub cmd: Vec<String>,
+    pub cmd: Option<Vec<String>>,
     pub domainname: String,
     pub env: Vec<String>,
     pub exposed_ports: Option<HashMap<String, ExposedPort>>,
@@ -34,6 +34,7 @@ pub struct ContainerConfig {
     pub user: String,
     // todo - volumes: ???,
     pub working_dir: String,
+    pub entrypoint: Option<Vec<String>>,
     pub stop_signal: Option<String>,
     pub stop_timeout: Option<usize>,
 }

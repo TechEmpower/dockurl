@@ -6,13 +6,13 @@ pub type DockerResult<T> = Result<T, DockerError>;
 
 #[derive(Error, Debug)]
 pub enum DockerError {
-    #[error("Curl error occurred")]
+    #[error("Curl error occurred: {0}")]
     CurlError(#[from] curl::Error),
 
-    #[error("IO error occurred")]
+    #[error("IO error occurred: {0}")]
     IoError(#[from] io::Error),
 
-    #[error("Serde json error")]
+    #[error("Serde json error: {0}")]
     SerdeJsonError(#[from] serde_json::error::Error),
 
     #[error("Error creating Docker Image: {0}")]
