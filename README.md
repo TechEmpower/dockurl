@@ -1,5 +1,7 @@
 # dockurl
 
+[![Build Status](https://github.com/TechEmpower/dockurl/workflows/build/badge.svg?branch=master&event=push)](https://github.com/TechEmpower/dockurl/actions?query=workflow%3Abuild+branch%3Amaster)
+
 **WARNING**: This library was written for the explicit use of 
 [TFBToolset](https://github.com/techempower/TFBToolset) and should
 **NOT** be used in any other production setting. Much of `dockurl` is simply
