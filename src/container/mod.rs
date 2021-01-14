@@ -254,7 +254,7 @@ pub fn kill_container<H: Handler>(
 }
 
 ///
-/// [Reference](https://docs.docker.com/engine/api/v1.40/#operation/ContainerLogs)
+/// [Reference](https://docs.docker.com/engine/api/v1.40/#operation/ContainerWait)
 pub fn wait_for_container_to_exit<H: Handler>(
     container_id: &str,
     docker_host: &str,

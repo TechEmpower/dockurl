@@ -49,18 +49,16 @@ pub fn build_image<H: Handler>(
     match easy.response_code() {
         Ok(code) => match code {
             200 => {
-                let image_id = &easy.get_ref().image_id;
-                if image_id.is_some() {
-                    return Ok(image_id.clone().unwrap());
+                if let Some(image_id) = &easy.get_ref().image_id {
+                    return Ok(image_id.to_owned());
+                } else if let Some(error_message) = &easy.get_ref().error_message {
+                    return Err(FailedToCreateDockerImageError(error_message.to_owned()));
                 }
                 Err(DockerImageCreateError)
             }
             _ => {
-                let error_message = &easy.get_ref().error_message;
-                if error_message.is_some() {
-                    return Err(FailedToCreateDockerImageError(
-                        error_message.clone().unwrap(),
-                    ));
+                if let Some(error_message) = &easy.get_ref().error_message {
+                    return Err(FailedToCreateDockerImageError(error_message.to_owned()));
                 }
                 Err(DockerImageCreateError)
             }

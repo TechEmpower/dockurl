@@ -38,6 +38,9 @@ impl<H: Handler> Handler for BuildImageHandler<H> {
                             //  it may not always use sha256, so this should be done right.
                             let sha = &line[7..];
                             self.image_id = Some(sha.to_string());
+                        } else if !json["error"].is_null() {
+                            let error = json["error"].as_str().unwrap().to_string();
+                            self.error_message = Some(error);
                         } else if !json["message"].is_null() {
                             let error = json["message"].as_str().unwrap().to_string();
                             self.error_message = Some(error);
