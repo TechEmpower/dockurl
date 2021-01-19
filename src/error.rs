@@ -78,6 +78,25 @@ pub enum DockerError {
     #[error("Error starting Docker Container; response code {0}")]
     DockerContainerStartError(u32),
 
+    #[error("Error deleting Docker Container; bad parameter: container id - {0}, message - {1}")]
+    DockerContainerDeleteBadParameterError(String, String),
+
+    #[error(
+        "Error deleting Docker Container; no such container: container id - {0}, message - {1}"
+    )]
+    DockerContainerDeleteNoSuchContainer(String, String),
+
+    #[error("Error deleting Docker Container; conflict: container id - {0}, message - {1}")]
+    DockerContainerDeleteConflictError(String, String),
+
+    #[error(
+        "Error deleting Docker Container; internal server error: container id - {0}, message - {1}"
+    )]
+    DockerContainerDeleteInternalServerError(String, String),
+
+    #[error("Error deleting Docker Container; unknown error: response code - {0}, message - {1}")]
+    DockerContainerDeleteUnknownError(u32, String),
+
     #[error("Error creating Docker Container: {0}")]
     FailedToCreateDockerContainerError(String),
 

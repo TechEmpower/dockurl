@@ -5,13 +5,17 @@ mod log_handlers;
 use crate::container::create::options::Options;
 use crate::container::inspect::ContainerInspection;
 use crate::container::log_handlers::create_container_handler::CreateContainerHandler;
+use crate::container::log_handlers::delete_container_handler::DeleteContainerHandler;
 use crate::container::log_handlers::inspect_container_handler::InspectContainerHandler;
 use crate::container::log_handlers::start_container_handler::StartContainerHandler;
 use crate::error::DockerError::{
     ContainerInspectionError, ContainerInspectionRequestError, CurlError,
-    DockerContainerCreateError, DockerContainerStartError, DockerDaemonError,
-    FailedToCreateDockerContainerError, FailedToStartDockerContainerError, KillContainerError,
-    NoSuchContainerError, StopContainerError,
+    DockerContainerCreateError, DockerContainerDeleteBadParameterError,
+    DockerContainerDeleteConflictError, DockerContainerDeleteInternalServerError,
+    DockerContainerDeleteNoSuchContainer, DockerContainerDeleteUnknownError,
+    DockerContainerStartError, DockerDaemonError, FailedToCreateDockerContainerError,
+    FailedToStartDockerContainerError, KillContainerError, NoSuchContainerError,
+    StopContainerError,
 };
 use crate::error::{DockerError, DockerResult};
 use curl::easy::{Easy2, Handler, List};
@@ -250,6 +254,57 @@ pub fn kill_container<H: Handler>(
             "An error occurred while trying to kill container: {}",
             container_id
         ))),
+    }
+}
+
+///
+/// [Reference](https://docs.docker.com/engine/api/v1.40/#operation/ContainerDelete)
+pub fn delete_container<H: Handler>(
+    container_id: &str,
+    docker_host: &str,
+    use_unix_socket: bool,
+    log_handler: H,
+    delete_anonymous_volumes: bool,
+    force: bool,
+    remove_associated_link: bool,
+) -> DockerResult<()> {
+    let mut easy = Easy2::new(DeleteContainerHandler::new(log_handler));
+    if use_unix_socket {
+        easy.unix_socket("/var/run/docker.sock")?;
+    }
+
+    easy.custom_request("DELETE")?;
+    easy.url(&format!(
+        "http://{}/containers/{}?v={}&force={}&link={}",
+        docker_host, container_id, delete_anonymous_volumes, force, remove_associated_link,
+    ))?;
+    easy.perform()?;
+
+    let accumulator = easy.get_ref().accumulator.clone();
+    let response = std::str::from_utf8(&accumulator).unwrap();
+
+    match easy.response_code()? {
+        204 => Ok(()),
+        400 => Err(DockerContainerDeleteBadParameterError(
+            container_id.to_string(),
+            response.to_string(),
+        )),
+        404 => Err(DockerContainerDeleteNoSuchContainer(
+            container_id.to_string(),
+            response.to_string(),
+        )),
+        409 => Err(DockerContainerDeleteConflictError(
+            container_id.to_string(),
+            response.to_string(),
+        )),
+        500 => Err(DockerContainerDeleteInternalServerError(
+            container_id.to_string(),
+            response.to_string(),
+        )),
+        code => Err(DockerContainerDeleteUnknownError(
+            code,
+            container_id.to_string(),
+        )),
     }
 }
 
