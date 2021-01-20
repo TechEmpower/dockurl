@@ -218,6 +218,44 @@ pub fn delete_builder_cache<H: Handler>(
     }
 }
 
+///
+/// [Reference](https://docs.docker.com/engine/api/v1.41/#operation/ImagePrune)
+pub fn delete_unused_images<H: Handler>(
+    filters: &str,
+    docker_host: &str,
+    use_unix_socket: bool,
+    log_handler: H,
+) -> DockerResult<()> {
+    let query_string = format!("?filters={}", filters);
+
+    let mut easy = Easy2::new(PruneImagesHandler::new(log_handler));
+    if use_unix_socket {
+        easy.unix_socket("/var/run/docker.sock")?;
+    }
+
+    easy.post(true)?;
+    easy.url(&format!(
+        "http://{}/images/prune{}",
+        docker_host, query_string
+    ))?;
+    easy.perform()?;
+
+    let error_message = &easy.get_ref().error_message;
+    if error_message.is_some() {
+        Err(FailedToPruneDockerImageError(
+            error_message.clone().unwrap(),
+        ))
+    } else {
+        match easy.response_code() {
+            Ok(code) => match code {
+                200 => Ok(()),
+                _ => Err(DockerImagePruneError),
+            },
+            Err(e) => Err(FailedToPruneDockerImageError(e.to_string())),
+        }
+    }
+}
+
 // PRIVATES
 
 /// Simple helper for housing a tarball in a buffer. We just want the bytes
