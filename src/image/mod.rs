@@ -1,17 +1,46 @@
 mod build_image_handler;
+mod prune_images_handler;
 
 use crate::error::DockerError::{
-    DockerImageCreateError, DockerImagePullError, FailedToCreateDockerImageError,
+    DockerImageCreateError, DockerImageDeleteError, DockerImagePruneError, DockerImagePullError,
+    FailedToCreateDockerImageError, FailedToDeleteDockerImageError, FailedToPruneDockerImageError,
     FailedToPullDockerImageError,
 };
 use crate::error::DockerResult;
 use crate::image::build_image_handler::BuildImageHandler;
+use crate::image::prune_images_handler::PruneImagesHandler;
 use curl::easy::{Easy2, Handler, List};
 use std::io::{Error, Write};
 use std::path::PathBuf;
 
+// pub struct BuildImageOptions<'a> {
+//     dockerfile: &'a PathBuf,
+//     t: &'a str,
+//     extrahosts: Option<&'a str>,
+//     remote: Option<&'a str>,
+//     q: bool,
+//     nocache: bool,
+//     pull: Option<&'a str>,
+//     rm: Option<&'a str>,
+//     forcerm: Option<&'a str>,
+//     memory: Option<i32>,
+//     memswap: Option<i32>,
+//     cpushares: Option<i32>,
+//     cpusetcpus: Option<&'a str>,
+//     cpuperiod: Option<i32>,
+//     cpuquota: Option<i32>,
+//     buildargs: Option<&'a str>,
+//     shmsize: Option<i32>,
+//     squash: Option<bool>,
+//     labels: Option<&'a str>,
+//     networkmode: Option<&'a str>,
+//     platform: Option<&'a str>,
+//     target: Option<&'a str>,
+//     outputs: Option<&'a str>,
+// }
+
 ///
-/// [Reference](https://docs.docker.com/engine/api/v1.40/#operation/ImageList)
+/// [Reference](https://docs.docker.com/engine/api/v1.40/#operation/ImageBuild)
 pub fn build_image<H: Handler>(
     name_and_tag: &str,
     dockerfile: &PathBuf,
@@ -102,6 +131,90 @@ pub fn create_image<H: Handler>(
             }
         },
         Err(e) => Err(FailedToPullDockerImageError(e.to_string())),
+    }
+}
+
+///
+/// [Reference](https://docs.docker.com/engine/api/v1.41/#operation/ImageDelete)
+pub fn delete_image<H: Handler>(
+    image_name_or_id: &str,
+    force: bool,
+    no_prune: bool,
+    docker_host: &str,
+    use_unix_socket: bool,
+    log_handler: H,
+) -> DockerResult<Option<String>> {
+    let query_string = format!("?force={}&noprune={}", force, no_prune);
+
+    let mut easy = Easy2::new(PruneImagesHandler::new(log_handler));
+    if use_unix_socket {
+        easy.unix_socket("/var/run/docker.sock")?;
+    }
+
+    easy.custom_request("DELETE")?;
+    easy.url(&format!(
+        "http://{}/images/{}{}",
+        docker_host, image_name_or_id, query_string
+    ))?;
+    easy.perform()?;
+
+    let message = easy.get_ref().message.clone();
+    let error_message = &easy.get_ref().error_message;
+    if error_message.is_some() {
+        Err(FailedToDeleteDockerImageError(
+            error_message.clone().unwrap(),
+        ))
+    } else {
+        match easy.response_code() {
+            Ok(code) => match code {
+                200 => Ok(message),
+                _ => Err(DockerImageDeleteError),
+            },
+            Err(e) => Err(FailedToDeleteDockerImageError(e.to_string())),
+        }
+    }
+}
+
+///
+/// [Reference](https://docs.docker.com/engine/api/v1.41/#operation/BuildPrune)
+pub fn delete_builder_cache<H: Handler>(
+    keep_storage: i64,
+    remove_all: bool,
+    filters: &str,
+    docker_host: &str,
+    use_unix_socket: bool,
+    log_handler: H,
+) -> DockerResult<()> {
+    let query_string = format!(
+        "?keep-storage={}&all={}&filters={}",
+        keep_storage, remove_all, filters
+    );
+
+    let mut easy = Easy2::new(PruneImagesHandler::new(log_handler));
+    if use_unix_socket {
+        easy.unix_socket("/var/run/docker.sock")?;
+    }
+
+    easy.post(true)?;
+    easy.url(&format!(
+        "http://{}/build/prune{}",
+        docker_host, query_string
+    ))?;
+    easy.perform()?;
+
+    let error_message = &easy.get_ref().error_message;
+    if error_message.is_some() {
+        Err(FailedToPruneDockerImageError(
+            error_message.clone().unwrap(),
+        ))
+    } else {
+        match easy.response_code() {
+            Ok(code) => match code {
+                200 => Ok(()),
+                _ => Err(DockerImagePruneError),
+            },
+            Err(e) => Err(FailedToPruneDockerImageError(e.to_string())),
+        }
     }
 }
 

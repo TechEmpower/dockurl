@@ -27,6 +27,18 @@ pub enum DockerError {
     #[error("Error pulling Docker Image")]
     DockerImagePullError,
 
+    #[error("Unknown error pruning Docker Image(s)")]
+    DockerImagePruneError,
+
+    #[error("Error pruning Docker Image(s): {0}")]
+    FailedToPruneDockerImageError(String),
+
+    #[error("Unknown error deleting Docker Image(s)")]
+    DockerImageDeleteError,
+
+    #[error("Error deleting Docker Image(s): {0}")]
+    FailedToDeleteDockerImageError(String),
+
     #[error("Error creating Docker Network: {0}")]
     FailedToCreateDockerNetworkError(String),
 
