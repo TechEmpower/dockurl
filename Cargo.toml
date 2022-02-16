@@ -1,7 +1,7 @@
 [package]
 name = "dockurl"
 description = "A synchronous low-level Docker API Rust library"
-version = "0.1.5"
+version = "0.1.6"
 authors = ["Mike Smith <msmith@techempower.com>"]
 edition = "2018"
 license = "BSD-3-Clause"
